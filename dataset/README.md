@@ -75,7 +75,8 @@ The scripts:
 - [Unreal-Moon-Terrain-Generation](https://github.com/raulcastar/Unreal-Moon-Terrain-Generation)
   (Terrain Studio) cloned next to this repository, or its path in
   `paths.terrain_studio`.
-- Python 3 with `pip install -r requirements.txt` and Terrain Studio's requirements.
+- Python 3 with `pip install -r requirements.txt` and Terrain Studio's requirements;
+  on Linux, `./run_docker.sh <generate.py arguments>` runs it in Docker instead.
 - Disk: about 5 MB per sample (about 25 GB for 5,000), plus up to a few GB for
   the bag being processed. Keep `output_dir` outside cloud-synced folders.
 

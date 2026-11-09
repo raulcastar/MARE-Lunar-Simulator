@@ -8,6 +8,7 @@ import math
 import os
 import shutil
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -30,10 +31,15 @@ class GncError(RuntimeError):
     pass
 
 
+# Docker runs in WSL on Windows and natively on Linux.
+HOST = ["wsl.exe", "-e"] if sys.platform == "win32" else []
+
+
 def wsl(cmd, check=True, timeout=120):
-    r = subprocess.run(["wsl.exe", "-e", "bash", "-lc", cmd], capture_output=True, text=True, timeout=timeout)
+    """A shell command where Docker runs: WSL on Windows, the host itself on Linux."""
+    r = subprocess.run(HOST + ["bash", "-lc", cmd], capture_output=True, text=True, timeout=timeout)
     if check and r.returncode != 0:
-        raise GncError(f"WSL command failed ({r.returncode}): {cmd}\n{r.stderr.strip()[-800:]}")
+        raise GncError(f"Docker host command failed ({r.returncode}): {cmd}\n{r.stderr.strip()[-800:]}")
     return r.stdout
 
 
@@ -52,6 +58,8 @@ def ros_param_set(container, node, key, value, attempts=3):
 
 
 def wsl_path(windows_path):
+    if not HOST:
+        return os.path.abspath(windows_path)
     return wsl(f"wslpath -u {json.dumps(windows_path.replace(chr(92), '/'))}").strip()
 
 
@@ -176,7 +184,7 @@ class Gnc:
         cmd = (f'docker exec {self.dashboard} bash -lc "source /opt/ros/jazzy/setup.bash; '
                f'timeout -s INT {int(max_s)} ros2 bag record -s mcap --storage-preset-profile zstd_fast '
                f'-o {bag} {" ".join(self.topics)}"')
-        proc = subprocess.Popen(["wsl.exe", "-e", "bash", "-lc", cmd],
+        proc = subprocess.Popen(HOST + ["bash", "-lc", cmd],
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(3.0)
         return proc, bag
@@ -190,9 +198,9 @@ class Gnc:
 
     def fetch_bag(self, bag, dest_dir):
         """
-        Copies a recorded bag out of the container into dest_dir (Windows path), file by
-        file through a pipe to Windows: a `docker cp` onto /mnt/c goes through WSL's page
-        cache and fails with "cannot allocate memory" on bags of several GB.
+        Copies a recorded bag out of the container into dest_dir, file by file through a
+        pipe (on Windows, to Windows from WSL: a `docker cp` onto /mnt/c goes through WSL's page
+        cache and fails with "cannot allocate memory" on bags of several GB).
         """
         out = os.path.join(dest_dir, bag.rstrip("/").rsplit("/", 1)[-1])
         if os.path.isdir(out):
@@ -201,7 +209,7 @@ class Gnc:
         for name in wsl(f"docker exec {self.dashboard} ls {bag}").split():
             part = os.path.join(out, name + ".part")
             with open(part, "wb") as f:
-                r = subprocess.run(["wsl.exe", "-e", "docker", "exec", self.dashboard, "cat", f"{bag}/{name}"],
+                r = subprocess.run(HOST + ["docker", "exec", self.dashboard, "cat", f"{bag}/{name}"],
                                    stdout=f, stderr=subprocess.PIPE, timeout=1800)
             if r.returncode != 0:
                 raise GncError(f"Copying {bag}/{name} failed: {r.stderr.decode(errors='replace')[-400:]}")
