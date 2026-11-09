@@ -73,7 +73,26 @@ long; the caches are kept in the `mare-unreal-ddc` volume. Host networking lets
 the sensor plugins reach the GNC containers on `127.0.0.1`, as on Windows, and
 Terrain Studio (`run_terrain_studio_docker.sh` in its repository) reach the
 editor through Remote Execution. The dataset generator runs with
-`dataset/run_docker.sh`.
+`dataset/run_docker.sh`. `docker/linux/progress.sh` shows a running editor's
+shader compilation, GPU and log.
+
+What differs from Windows, and is handled for you:
+
+- **Remote Execution.** Linux delivers multicast only to sockets bound to
+  `0.0.0.0`, never to one bound to `127.0.0.1` as the editor's is, so the
+  editor would not hear the discovery pings. Terrain Studio's client (its
+  `unreal_link/remote_execution.py`, which the dataset generator uses too)
+  therefore also sends them unicast to `127.0.0.1:6766` on Linux. Everything
+  stays on loopback: no route or firewall change, and the editor keeps the
+  project's settings.
+- **Vulkan bindless descriptors.** `mare.sh` raises the editor's heap of
+  typed-buffer views (`r.Vulkan.Bindless.MaxResourceUniformTexelBufferCount`)
+  from 65,536 to 1,048,576, near what D3D12 has. The levels' wheel-track
+  decals alone hold about 16,000, and re-creating them in one frame needs as
+  many again before the old ones are freed; a full heap crashes the editor
+  ("Attemping to update invalid descriptor handle").
+- **Closing the editor** can crash in SDL teardown and hang; stop the container
+  (`docker kill`) if it does. `mare.sh smoke` exits on its own.
 
 ## UnrealDEMLandscape
 
