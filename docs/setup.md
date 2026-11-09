@@ -47,6 +47,34 @@ plugins' own descriptors: Python Editor Script Plugin, Editor Scripting
 Utilities, Modeling Tools, Json Blueprint Utilities, Procedural Mesh and
 Geometry Scripting.
 
+## Linux, in Docker
+
+On Linux the whole suite runs in containers; the host needs only Docker, the
+NVIDIA driver and the NVIDIA Container Toolkit. `docker/linux/` builds the
+editor from Epic's official image, `ghcr.io/epicgames/unreal-engine:dev-slim-5.7`
+(tens of GB). Pulling it needs:
+
+1. Your GitHub account linked to your Epic Games account, and the invitation to
+   the EpicGames organisation accepted ([how](https://www.unrealengine.com/en-US/ue-on-github)).
+2. `docker login ghcr.io -u <github user>`, with a GitHub token that has
+   `read:packages`.
+
+Then, with the suite cloned side by side (the folder holding this repository is
+mounted into the containers at its own path):
+
+```sh
+docker/linux/mare.sh build     # the image, then the project's plugins for Linux
+docker/linux/mare.sh smoke     # headless: plugins loaded, both levels open
+docker/linux/mare.sh editor    # the editor on your X server (Wayland: XWayland)
+```
+
+The editor uses Vulkan (SM6). Its first start compiles every shader, which takes
+long; the caches are kept in the `mare-unreal-ddc` volume. Host networking lets
+the sensor plugins reach the GNC containers on `127.0.0.1`, as on Windows, and
+Terrain Studio (`run_terrain_studio_docker.sh` in its repository) reach the
+editor through Remote Execution. The dataset generator runs with
+`dataset/run_docker.sh`.
+
 ## UnrealDEMLandscape
 
 Unreal's Python API cannot create a Landscape, so Terrain Studio builds it
@@ -70,8 +98,8 @@ They are set in `Config/DefaultEngine.ini`; check them after cloning:
 
 | | Where | Needs |
 |---|---|---|
-| GNC stack | [GNC-Moon-Simulator](https://github.com/raulcastar/GNC-Moon-Simulator) | WSL2 with mirrored networking, Docker; ROS 2 Jazzy runs in the containers |
-| Terrain Studio | [Unreal-Moon-Terrain-Generation](https://github.com/raulcastar/Unreal-Moon-Terrain-Generation) | Python 3 with Tkinter; the editor open |
+| GNC stack | [GNC-Moon-Simulator](https://github.com/raulcastar/GNC-Moon-Simulator) | Docker (on Windows: WSL2 with mirrored networking); ROS 2 Jazzy runs in the containers |
+| Terrain Studio | [Unreal-Moon-Terrain-Generation](https://github.com/raulcastar/Unreal-Moon-Terrain-Generation) | Python 3 with Tkinter, or Docker on Linux; the editor open |
 
 They connect to the editor over `127.0.0.1`, so this project does not depend
 on where they are cloned ([Clone the suite](#clone-the-suite) puts them side by
