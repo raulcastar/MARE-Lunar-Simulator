@@ -107,6 +107,16 @@ What differs from Windows, and is handled for you:
   decals alone hold about 16,000, and re-creating them in one frame needs as
   many again before the old ones are freed; a full heap crashes the editor
   ("Attemping to update invalid descriptor handle").
+- **Camera quality.** `mare.sh` renders the rover's cameras at their best
+  quality by default (`QUALITY=high`; `QUALITY=project` keeps the project's own
+  settings). The cameras are 640×480 scene captures rendered a few times a
+  simulated second, and settings made for the editor viewport degrade them:
+  the level's local exposure (Fusion) posterises them into flat patches,
+  temporal anti-aliasing and motion blur smear renders 0.2 s apart, and the
+  texture streamer sizes textures for the viewport only. The list, with the
+  reason for each setting, is in `mare.sh`. The simulation speed is unchanged
+  on an RTX 3060 (0.90× real time either way; the GPU goes from 63 to 84 %).
+  The ground-truth masks keep their exact class colours.
 - **ANGLE / "Exiting GPU process" errors** in the first minute come from the
   editor's web browser (CEF, used by a few editor panels): its GPU process
   cannot start in the container. It retries about 20 times, then stops; nothing

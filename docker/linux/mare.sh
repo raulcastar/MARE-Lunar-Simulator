@@ -18,6 +18,10 @@
 # A level given in ARGS (e.g. /Game/Lunar_Terrain_Yutu) must follow the project
 # path directly: Unreal takes the map only from the first argument after it.
 #
+# QUALITY=high (the default) renders the rover's cameras at the best quality,
+# at the cost of simulation speed; QUALITY=project keeps the project's own
+# rendering settings (as on Windows). See the list below.
+#
 # SHADER_RESERVE is the percentage of logical cores left free while shaders
 # compile (default 12, so 14 of 16 threads compile; Unreal's own default is 50).
 set -euo pipefail
@@ -37,6 +41,30 @@ BINDLESS="-ini:Engine:[ConsoleVariables]:r.Vulkan.Bindless.MaxResourceUniformTex
 # container (ANGLE fails on Vulkan and GL alike): it retries about 20 times in
 # the first minute, printing ANGLE errors, then stops. Ask it for software.
 CEF="-ini:Engine:[ConsoleVariables]:r.CEFGPUAcceleration=0"
+# Camera quality. The cameras are scene captures rendered a few times a
+# simulated second at 640x480, and several of the project's settings, made for
+# the editor viewport, degrade them:
+HIGH_QUALITY=(
+    r.LocalExposure=0                 # local exposure (Fusion, from the level's post-process volume)
+                                      # posterises captures this small into flat patches
+    r.ExposureOffset=-1.5             # ...and darkened the image: keep the brightness without it
+    r.AntiAliasingMethod=1            # FXAA: temporal AA smears renders 0.2 s apart (the dataset's choice too)
+    r.MotionBlurQuality=0             # no motion blur: between renders this far apart it streaks the ground
+    r.MotionBlur.Max=0
+    r.Shadow.Virtual.ResolutionLodBiasDirectional=-2.5   # finer sun shadows (the dataset's values)
+    r.Shadow.Virtual.MaxPhysicalPages=8192               # ...with room for them, so distant ones stay
+    r.Shadow.Virtual.SMRT.RayCountDirectional=0          # sharp sun shadows, without soft-shadow dither dots
+    r.MaxAnisotropy=16                # sharp ground texture at grazing angles
+    r.Streaming.PoolSize=3000         # full-resolution textures for the cameras too (the texture
+    r.Streaming.FullyLoadUsedTextures=1   # streamer sizes mips for the editor viewport, not captures)
+    r.Nanite.MaxPixelsPerEdge=0.5     # finer distant geometry
+)
+OPTS="-vulkan '$SHADERS' '$BINDLESS' '$CEF'"
+case "${QUALITY:-high}" in
+    high) for c in "${HIGH_QUALITY[@]}"; do OPTS+=" '-ini:Engine:[ConsoleVariables]:$c'"; done ;;
+    project) ;;
+    *) echo "QUALITY must be high or project" >&2; exit 2 ;;
+esac
 compose=(docker compose -f "$HERE/compose.yaml")
 
 image() {
@@ -53,17 +81,17 @@ case "${1:-editor}" in
     editor)
         image
         shift $(( $# > 0 ))   # "mare.sh" alone means editor
-        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $(printf '%q ' "$@") -vulkan '$SHADERS' '$BINDLESS' '$CEF'" ;;
+        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $(printf '%q ' "$@") $OPTS" ;;
     headless)
         image
         shift
-        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $(printf '%q ' "$@") -vulkan '$SHADERS' '$BINDLESS' '$CEF' -RenderOffscreen -unattended -nosplash -nosound '-ExecCmds=py $SCRIPTS/autoplay.py'" ;;
+        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $(printf '%q ' "$@") $OPTS -RenderOffscreen -unattended -nosplash -nosound '-ExecCmds=py $SCRIPTS/autoplay.py'" ;;
     play|stop|status)
         image
         run -T -e MARE_SUITE unreal bash -lc "$UE/Binaries/ThirdParty/Python3/Linux/bin/python3 -I $SCRIPTS/remote.py $1" ;;
     smoke)
         image
-        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT -vulkan '$SHADERS' '$BINDLESS' '$CEF' -RenderOffscreen -unattended -nosplash -nosound -stdout -FullStdOutLogOutput -ExecutePythonScript=$SCRIPTS/smoke.py" ;;
+        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $OPTS -RenderOffscreen -unattended -nosplash -nosound -stdout -FullStdOutLogOutput -ExecutePythonScript=$SCRIPTS/smoke.py" ;;
     shell)
         image
         run unreal bash ;;
