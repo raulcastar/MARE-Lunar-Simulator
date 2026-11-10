@@ -122,6 +122,10 @@ What differs from Windows, and is handled for you:
   cannot start in the container. It retries about 20 times, then stops; nothing
   else is affected. `mare.sh` asks it to render in software
   (`r.CEFGPUAcceleration=0`).
+- **An editor that was killed** leaves its cache server's entry in
+  `/dev/shm/UnrealEngineZen` (the containers share the host's `/dev/shm`), and
+  the next editor would die at startup in `DerivedDataBackends.cpp` (line 215).
+  `mare.sh` removes that state before starting an editor when none is running.
 - **Closing the editor** can crash in SDL teardown and hang; stop the container
   (`docker kill`) if it does. `mare.sh smoke` exits on its own.
 

@@ -47,7 +47,6 @@ CEF="-ini:Engine:[ConsoleVariables]:r.CEFGPUAcceleration=0"
 HIGH_QUALITY=(
     r.LocalExposure=0                 # local exposure (Fusion, from the level's post-process volume)
                                       # posterises captures this small into flat patches
-    r.ExposureOffset=-1.5             # ...and darkened the image: keep the brightness without it
     r.AntiAliasingMethod=1            # FXAA: temporal AA smears renders 0.2 s apart (the dataset's choice too)
     r.MotionBlurQuality=0             # no motion blur: between renders this far apart it streaks the ground
     r.MotionBlur.Max=0
@@ -59,9 +58,14 @@ HIGH_QUALITY=(
     r.Streaming.FullyLoadUsedTextures=1   # streamer sizes mips for the editor viewport, not captures)
     r.Nanite.MaxPixelsPerEdge=0.5     # finer distant geometry
 )
+# Console commands at startup (-ExecCmds, comma-separated). r.ExposureOffset is a
+# "cheat" variable, which an ini override may not set: without local exposure
+# the image is brighter, and this keeps its brightness.
+EXEC=""
 OPTS="-vulkan '$SHADERS' '$BINDLESS' '$CEF'"
 case "${QUALITY:-high}" in
-    high) for c in "${HIGH_QUALITY[@]}"; do OPTS+=" '-ini:Engine:[ConsoleVariables]:$c'"; done ;;
+    high) for c in "${HIGH_QUALITY[@]}"; do OPTS+=" '-ini:Engine:[ConsoleVariables]:$c'"; done
+          EXEC="r.ExposureOffset -1.5" ;;
     project) ;;
     *) echo "QUALITY must be high or project" >&2; exit 2 ;;
 esac
@@ -74,6 +78,18 @@ image() {
 }
 run() { "${compose[@]}" run --rm "$@"; }
 
+# The editor's cache server (zenserver) records itself in /dev/shm/UnrealEngineZen,
+# which the containers share with the host (ipc: host, for the X display). An
+# editor that was killed leaves its entry there, naming a process id that the
+# next container gives to its own new zenserver: the next editor then shuts
+# that down as a stranger, again and again, and dies ("DerivedDataBackends.cpp
+# Line 215"). With no editor container running, every entry is stale.
+clear_stale_state() {
+    if ! docker ps -q --filter label=com.docker.compose.project=mare-unreal | grep -q .; then
+        rm -f /dev/shm/UnrealEngineZen /dev/shm/UnrealTraceServer
+    fi
+}
+
 case "${1:-editor}" in
     build)
         "${compose[@]}" build
@@ -81,16 +97,19 @@ case "${1:-editor}" in
     editor)
         image
         shift $(( $# > 0 ))   # "mare.sh" alone means editor
-        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $(printf '%q ' "$@") $OPTS" ;;
+        clear_stale_state
+        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $(printf '%q ' "$@") $OPTS ${EXEC:+'-ExecCmds=$EXEC'}" ;;
     headless)
         image
         shift
-        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $(printf '%q ' "$@") $OPTS -RenderOffscreen -unattended -nosplash -nosound '-ExecCmds=py $SCRIPTS/autoplay.py'" ;;
+        clear_stale_state
+        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $(printf '%q ' "$@") $OPTS -RenderOffscreen -unattended -nosplash -nosound '-ExecCmds=${EXEC:+$EXEC,}py $SCRIPTS/autoplay.py'" ;;
     play|stop|status)
         image
         run -T -e MARE_SUITE unreal bash -lc "$UE/Binaries/ThirdParty/Python3/Linux/bin/python3 -I $SCRIPTS/remote.py $1" ;;
     smoke)
         image
+        clear_stale_state
         run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $OPTS -RenderOffscreen -unattended -nosplash -nosound -stdout -FullStdOutLogOutput -ExecutePythonScript=$SCRIPTS/smoke.py" ;;
     shell)
         image
