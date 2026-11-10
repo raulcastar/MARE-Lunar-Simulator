@@ -66,7 +66,23 @@ mounted into the containers at its own path):
 docker/linux/mare.sh build     # the image, then the project's plugins for Linux
 docker/linux/mare.sh smoke     # headless: plugins loaded, both levels open
 docker/linux/mare.sh editor    # the editor on your X server (Wayland: XWayland)
+docker/linux/mare.sh editor /Game/Lunar_Terrain_Yutu    # ...on the Yutu level
 ```
+
+Without a window, the editor still renders every sensor; it starts Play by
+itself once the level has loaded:
+
+```sh
+docker/linux/mare.sh headless /Game/Lunar_Terrain_Yutu   # Ctrl-C stops it
+docker/linux/mare.sh status    # the open level, and whether Play runs
+docker/linux/mare.sh stop      # stop Play; `play` starts it again
+```
+
+`play`, `stop` and `status` work on the windowed editor as well. They use
+Terrain Studio's Remote Execution client, so the Terrain Studio repository must
+sit next to this one. Everything that runs in the editor carries on headless:
+the wheel tracks, the masks following the sun, Terrain Studio's sends and the
+dataset generator.
 
 The editor uses Vulkan (SM6). Its first start compiles every shader, which takes
 long; the caches are kept in the `mare-unreal-ddc` volume. Host networking lets
@@ -91,6 +107,11 @@ What differs from Windows, and is handled for you:
   decals alone hold about 16,000, and re-creating them in one frame needs as
   many again before the old ones are freed; a full heap crashes the editor
   ("Attemping to update invalid descriptor handle").
+- **ANGLE / "Exiting GPU process" errors** in the first minute come from the
+  editor's web browser (CEF, used by a few editor panels): its GPU process
+  cannot start in the container. It retries about 20 times, then stops; nothing
+  else is affected. `mare.sh` asks it to render in software
+  (`r.CEFGPUAcceleration=0`).
 - **Closing the editor** can crash in SDL teardown and hang; stop the container
   (`docker kill`) if it does. `mare.sh smoke` exits on its own.
 
