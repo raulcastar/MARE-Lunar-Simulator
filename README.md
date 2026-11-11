@@ -88,7 +88,7 @@ path, masks, global map, lidar, local elevation map and telemetry:
 
 ## Requirements
 
-- Windows 10/11 with Unreal Engine **5.7** and Visual Studio 2022 (*Game development with C++*), to build the plugins on first open.
+- Windows 10/11 with Unreal Engine **5.7** and Visual Studio 2022 (*Game development with C++*), to build the plugins on first open; **or Linux with Docker** and an NVIDIA GPU, where the editor, the GNC stack, Terrain Studio and the dataset generator all run in containers ([docs/setup.md](docs/setup.md#linux-in-docker)).
 - [Git LFS](https://git-lfs.com): the assets and levels are stored in LFS.
 - For the GNC stack: WSL2 and Docker (ROS 2 Jazzy runs in the containers).
 - A recent GPU (the project uses Lumen and virtual shadow maps), and about 32 GB of RAM to run Unreal and the stack together.

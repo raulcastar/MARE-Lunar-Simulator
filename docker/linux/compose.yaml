@@ -1,0 +1,39 @@
+# Unreal Editor for MARE in Docker (Linux, NVIDIA). Use mare.sh rather than
+# calling this directly: it sets MARE_SUITE and builds the image.
+#
+# - The project is mounted at /work/MARE-Lunar-Simulator: no spaces in the path,
+#   which UnrealBuildTool's Linux scripts don't always survive.
+# - The suite folder (this repository's parent, holding Terrain Studio and the
+#   GNC stack) is also mounted at its own host path: Terrain Studio names its
+#   modules and outputs by absolute host path in the commands it sends.
+# - Host network: the sensor plugins dial the GNC containers on 127.0.0.1, and
+#   Python Remote Execution (Terrain Studio, the dataset generator) is
+#   multicast on 127.0.0.1.
+name: mare-unreal
+
+services:
+  unreal:
+    build:
+      context: .
+      args:
+        UE_IMAGE: ${UE_IMAGE:-ghcr.io/epicgames/unreal-engine:dev-slim-5.7}
+    image: mare/unreal:5.7
+    network_mode: host
+    ipc: host
+    gpus: all
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: all     # graphics + display: Vulkan, not only CUDA
+      DISPLAY: ${DISPLAY:-}
+      XAUTHORITY: /tmp/.Xauthority
+    volumes:
+      - ../..:/work/MARE-Lunar-Simulator
+      - ${MARE_SUITE:?run through mare.sh}:${MARE_SUITE}
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - ${XAUTHORITY:-/dev/null}:/tmp/.Xauthority:ro
+      # Shader and asset caches survive the container: the first launch
+      # compiles every SM6 shader, which takes long.
+      - mare-unreal-ddc:/home/ue4/.config/Epic
+    working_dir: /work/MARE-Lunar-Simulator
+
+volumes:
+  mare-unreal-ddc:
