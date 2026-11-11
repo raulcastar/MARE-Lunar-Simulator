@@ -16,7 +16,7 @@ services:
     build:
       context: .
       args:
-        UE_IMAGE: ${UE_IMAGE:-ghcr.io/epicgames/unreal-engine:dev-slim-5.7}
+        UE_IMAGE: ${UE_IMAGE:-ghcr.io/epicgames/unreal-engine:dev-slim-5.7.4}
     image: mare/unreal:5.7
     network_mode: host
     ipc: host

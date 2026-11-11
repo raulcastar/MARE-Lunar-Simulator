@@ -3,7 +3,9 @@
 # Epic Games account (https://www.unrealengine.com/en-US/ue-on-github) and
 #   docker login ghcr.io -u <github user>      (a token with read:packages)
 # Build and run it through mare.sh, next to this file.
-ARG UE_IMAGE=ghcr.io/epicgames/unreal-engine:dev-slim-5.7
+# Pinned to one engine release, so every machine builds the same engine; to
+# upgrade, change the version here and in compose.yaml, then REBUILD=1 mare.sh build.
+ARG UE_IMAGE=ghcr.io/epicgames/unreal-engine:dev-slim-5.7.4
 FROM ${UE_IMAGE}
 
 # Vulkan loader (the NVIDIA ICD comes from the container toolkit), vulkaninfo for

@@ -51,7 +51,7 @@ Geometry Scripting.
 
 On Linux the whole suite runs in containers; the host needs only Docker, the
 NVIDIA driver and the NVIDIA Container Toolkit. `docker/linux/` builds the
-editor from Epic's official image, `ghcr.io/epicgames/unreal-engine:dev-slim-5.7`
+editor from Epic's official image, `ghcr.io/epicgames/unreal-engine:dev-slim-5.7.4`
 (tens of GB). Pulling it needs:
 
 1. Your GitHub account linked to your Epic Games account, and the invitation to

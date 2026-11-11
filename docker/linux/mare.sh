@@ -14,7 +14,7 @@
 #
 # docker/linux/progress.sh watches a running editor (shaders, GPU, log, smoke results).
 #
-# UE_IMAGE overrides the base image (default ghcr.io/epicgames/unreal-engine:dev-slim-5.7).
+# UE_IMAGE overrides the base image (default ghcr.io/epicgames/unreal-engine:dev-slim-5.7.4).
 # A level given in ARGS (e.g. /Game/Lunar_Terrain_Yutu) must follow the project
 # path directly: Unreal takes the map only from the first argument after it.
 #
