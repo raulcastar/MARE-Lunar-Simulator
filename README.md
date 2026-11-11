@@ -6,12 +6,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Unreal Engine 5.7](https://img.shields.io/badge/Unreal%20Engine-5.7-313131?logo=unrealengine&logoColor=white)](https://www.unrealengine.com/)
 [![ROS 2 Jazzy](https://img.shields.io/badge/ROS%202-Jazzy-22314E?logo=ros&logoColor=white)](https://docs.ros.org/en/jazzy/)
+[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)](#requirements)
+[![Linux](https://img.shields.io/badge/Linux-Docker-FCC624?logo=linux&logoColor=black)](#linux)
 
 **MARE** (*Modular Autonomy and Rendering Environment*, after the lunar maria)
 is an open-source lunar rover simulator built on Unreal Engine 5 and ROS 2. It generates
 lunar terrain with craters, rocks and a low sun, renders it for the rover's
 cameras and sensors with ground truth, and drives the rover autonomously with a
-ROS 2 GNC stack, watched from a web mission control.
+ROS 2 GNC stack, watched from a web mission control. It runs on Windows and,
+with the whole suite in Docker, on Linux.
 
 **Paper:** [arXiv:2610.28465](https://arxiv.org/abs/2610.28465) · **Video overview:** [YouTube](https://youtu.be/EI4HgbMFbBE) · **Project page:** [raulcastar.me/mare](https://raulcastar.me/mare/)
 
@@ -88,10 +91,11 @@ path, masks, global map, lidar, local elevation map and telemetry:
 
 ## Requirements
 
-- Windows 10/11 with Unreal Engine **5.7** and Visual Studio 2022 (*Game development with C++*), to build the plugins on first open; **or Linux with Docker** and an NVIDIA GPU, where the editor, the GNC stack, Terrain Studio and the dataset generator all run in containers ([docs/setup.md](docs/setup.md#linux-in-docker)).
-- [Git LFS](https://git-lfs.com): the assets and levels are stored in LFS.
-- For the GNC stack: WSL2 and Docker (ROS 2 Jazzy runs in the containers).
-- A recent GPU (the project uses Lumen and virtual shadow maps), and about 32 GB of RAM to run Unreal and the stack together.
+MARE runs on **Windows** and **Linux**.
+
+- **Windows 10/11:** Unreal Engine **5.7** and Visual Studio 2022 (*Game development with C++*) to build the plugins on first open, and Docker on WSL2 for the GNC stack.
+- **Linux:** Docker, an NVIDIA GPU with its driver, and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). Everything else runs in containers ([Linux](#linux)).
+- **Both:** [Git LFS](https://git-lfs.com) (the assets and levels are stored in LFS), a recent GPU (the project uses Lumen and virtual shadow maps), and about 32 GB of RAM to run Unreal and the stack together.
 
 ## Quick start
 
@@ -105,9 +109,41 @@ git clone https://github.com/raulcastar/Unreal-Moon-Terrain-Generation.git
 Clone them side by side; what each is for, and the plugin repositories:
 [docs/setup.md](docs/setup.md#clone-the-suite).
 
+**Windows:**
+
 1. Open `Moon_Simulator.uproject` and let Unreal build the plugins ([docs/setup.md](docs/setup.md)). It opens on `Lunar_Terrain_Raph`.
 2. Start the GNC stack ([GNC-Moon-Simulator](https://github.com/raulcastar/GNC-Moon-Simulator#quick-start)), press **Play**, and open mission control at http://127.0.0.1:5000 to send the rover to a goal.
 3. To build your own terrain, run [Terrain Studio](https://github.com/raulcastar/Unreal-Moon-Terrain-Generation#quick-start) with the editor open.
+
+**Linux** (after [getting access to Epic's image](#linux), once):
+
+```sh
+MARE-Lunar-Simulator/docker/linux/mare.sh build      # the editor image, then the plugins
+GNC-Moon-Simulator/docker_build.sh                   # builds and starts the GNC stack
+MARE-Lunar-Simulator/docker/linux/mare.sh editor     # the editor on Lunar_Terrain_Raph
+MARE-Lunar-Simulator/docker/linux/mare.sh play       # or press Play in the editor
+```
+
+Then open mission control at http://127.0.0.1:5000. For your own terrain, run
+`Unreal-Moon-Terrain-Generation/run_terrain_studio_docker.sh`.
+
+## Linux
+
+The whole suite runs on Linux in Docker: the Unreal Editor, the GNC stack,
+Terrain Studio and the dataset generator. It is tested on Ubuntu and Arch Linux
+with NVIDIA RTX GPUs.
+
+The editor is built on Epic's Unreal Engine image on ghcr.io (the GitHub
+Container Registry), which Epic shares only with accounts that have accepted
+the Unreal Engine EULA. To get access, once:
+
+1. Link your GitHub account to your Epic Games account ([Epic's guide](https://www.unrealengine.com/en-US/ue-on-github)).
+2. Accept the invitation to the EpicGames organisation on GitHub, sent by email after linking.
+3. Create a classic GitHub token with the `read:packages` scope.
+4. Sign in with `docker login ghcr.io -u <github user>`, using the token as the password.
+
+Commands, troubleshooting and what differs from Windows:
+[docs/setup.md](docs/setup.md#linux-in-docker).
 
 ## AI agents
 
@@ -121,13 +157,13 @@ cameras and records bags. See each repository's README.
 | | |
 |---|---|
 | [Pipeline](docs/pipeline.md) | The full workflow, from a terrain to an autonomous drive, and every link between the parts |
-| [Setup](docs/setup.md) | Cloning with LFS, building the plugins, connecting the other repositories |
+| [Setup](docs/setup.md) | Cloning with LFS, building the plugins, connecting the other repositories, [Linux in Docker](docs/setup.md#linux-in-docker) |
 | [The Unreal project](docs/project.md) | Levels, rovers, plugins, content layout, project settings, editor Python |
 | [Rovers](https://github.com/raulcastar/GNC-Moon-Simulator/blob/main/docs/rovers.md) | Leo_Raph and Yutu, switching rovers, physics tuning (GNC docs) |
 
 ## Roadmap
 
-- [ ] Ubuntu support, alongside Windows
+- [x] Linux support (Ubuntu, Arch), alongside Windows: the whole suite in Docker ([Linux](#linux))
 - [ ] MuJoCo physics for the rovers, through the [Unreal Robotics Lab](https://github.com/URLab-Sim/UnrealRoboticsLab) plugin
 - [ ] More rover models
 - [ ] Lunar lava tubes

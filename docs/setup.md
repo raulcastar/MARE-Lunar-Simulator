@@ -51,13 +51,36 @@ Geometry Scripting.
 
 On Linux the whole suite runs in containers; the host needs only Docker, the
 NVIDIA driver and the NVIDIA Container Toolkit. `docker/linux/` builds the
-editor from Epic's official image, `ghcr.io/epicgames/unreal-engine:dev-slim-5.7.4`
-(tens of GB). Pulling it needs:
+editor from Epic's official image, `ghcr.io/epicgames/unreal-engine:dev-slim-5.7.4`.
+ghcr.io is the GitHub Container Registry, and Epic shares the image there only
+with accounts that have accepted the Unreal Engine EULA. Access is free, and
+set up once:
 
-1. Your GitHub account linked to your Epic Games account, and the invitation to
-   the EpicGames organisation accepted ([how](https://www.unrealengine.com/en-US/ue-on-github)).
-2. `docker login ghcr.io -u <github user>`, with a GitHub token that has
-   `read:packages`.
+1. **Link your GitHub account to your Epic Games account**, under *Apps and
+   Accounts* on [epicgames.com](https://www.epicgames.com/account/connections)
+   ([Epic's guide](https://www.unrealengine.com/en-US/ue-on-github)).
+2. **Accept the invitation to the EpicGames organisation**, sent by email a few
+   minutes after linking, or at https://github.com/orgs/EpicGames/invitation.
+   Access is in place once https://github.com/EpicGames/UnrealEngine opens.
+3. **Create a GitHub token**: *Settings → Developer settings → Personal access
+   tokens → Tokens (classic)*, with only the `read:packages` scope. A
+   fine-grained token does not work.
+4. **Sign in to ghcr.io** with `docker login ghcr.io -u <github user>`, using
+   the token as the password. Docker keeps the login.
+
+`docker manifest inspect ghcr.io/epicgames/unreal-engine:dev-slim-5.7.4`
+checks the access. If it fails:
+
+- **`unauthorized`:** Docker is not signed in to ghcr.io (step 4).
+- **`denied`:** the account has no access yet: the invitation is not accepted
+  (step 2), the token lacks `read:packages` (step 3), or the login used a
+  GitHub account other than the linked one.
+
+The image is about 22 GB to download, more once unpacked; `mare.sh build`
+pulls it the first time. It is pinned to Unreal Engine 5.7.4 so that every
+machine builds the same engine. To move to a newer 5.7 release, change the
+version in `docker/linux/Dockerfile` and `docker/linux/compose.yaml`, then run
+`REBUILD=1 docker/linux/mare.sh build`.
 
 Then, with the suite cloned side by side (the folder holding this repository is
 mounted into the containers at its own path):
@@ -67,6 +90,7 @@ docker/linux/mare.sh build     # the image, then the project's plugins for Linux
 docker/linux/mare.sh smoke     # headless: plugins loaded, both levels open
 docker/linux/mare.sh editor    # the editor on your X server (Wayland: XWayland)
 docker/linux/mare.sh editor /Game/Lunar_Terrain_Yutu    # ...on the Yutu level
+docker/linux/mare.sh shell     # a shell in the container
 ```
 
 Without a window, the editor still renders every sensor; it starts Play by
