@@ -101,7 +101,7 @@ MARE runs on **Windows** and **Linux**.
 
 ```sh
 git lfs install                # once: the Unreal assets are in Git LFS
-git clone --recursive https://github.com/raulcastar/MARE-Lunar-Simulator.git   # with the URLab submodule
+git clone https://github.com/raulcastar/MARE-Lunar-Simulator.git   # --recursive for MuJoCo (optional)
 git clone https://github.com/raulcastar/GNC-Moon-Simulator.git
 git clone https://github.com/raulcastar/Unreal-Moon-Terrain-Generation.git
 ```
@@ -151,18 +151,26 @@ Commands, troubleshooting and what differs from Windows:
 through the [Unreal Robotics Lab](https://github.com/URLab-Sim/UnrealRoboticsLab) plugin (URLab),
 driven by the same GNC stack. The other levels keep Unreal's Chaos physics.
 
+MuJoCo is optional and off by default: the project opens and runs without it.
 URLab is a git submodule in `Plugins/UnrealRoboticsLab`, pinned to a tested
-commit. Clone with `--recursive`, or fetch it in an existing clone:
+commit, and only needed for MuJoCo. Clone with `--recursive`, or fetch it in an
+existing clone:
 
 ```sh
 git submodule update --init
 ```
 
-The project needs URLab built to open, whichever level you use. Its native
-libraries (MuJoCo, CoACD, libzmq) are built once per machine:
+Its native libraries (MuJoCo, CoACD, libzmq) are built once per machine:
 
-- **Linux:** `docker/linux/mare.sh build` fetches the submodule and builds everything.
-- **Windows:** run `Plugins/UnrealRoboticsLab/third_party/build_all.ps1` (CMake 3.24+ and Visual Studio 2022), then open the project.
+- **Linux:** add `MUJOCO=1` to `mare.sh`, e.g. `MUJOCO=1 docker/linux/mare.sh build`, then
+  `MUJOCO=1 docker/linux/mare.sh editor /Game/Lunar_Terrain_Raph_MuJoCo`. The build fetches the
+  submodule and builds everything.
+- **Windows:** run `Plugins/UnrealRoboticsLab/third_party/build_all.ps1` (CMake 3.24+ and Visual
+  Studio 2022), then enable the *Unreal Robotics Lab* and *MARE MuJoCo Rover Bridge* plugins
+  (*Edit → Plugins*) and restart the editor.
+
+Enabling both plugins in the project, as on Windows, turns MuJoCo on for good,
+on Linux too.
 
 Usage and the rover model: [Plugins/MAREMuJoCoBridge](Plugins/MAREMuJoCoBridge/README.md).
 

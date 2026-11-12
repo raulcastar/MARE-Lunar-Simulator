@@ -2,8 +2,8 @@
 # MARE's Unreal Editor in Docker (Linux, NVIDIA GPU). Nothing runs on the host
 # but Docker; the plugins are built into Plugins/*/Binaries/Linux.
 #
-#   docker/linux/mare.sh build     build the image, then the project's plugins (and, the
-#                                  first time, URLab's native libraries: see below)
+#   docker/linux/mare.sh build     build the image, then the project's plugins (with MuJoCo,
+#                                  the first time, also URLab's native libraries: see below)
 #   docker/linux/mare.sh editor [ARGS]  open the editor on your X server (Wayland: XWayland);
 #                                  ARGS go to UnrealEditor, e.g. /Game/Lunar_Terrain_Yutu
 #   docker/linux/mare.sh headless [ARGS]  the editor without a window, starting Play by itself
@@ -25,6 +25,10 @@
 #
 # SHADER_RESERVE is the percentage of logical cores left free while shaders
 # compile (default 12, so 14 of 16 threads compile; Unreal's own default is 50).
+#
+# MUJOCO=1 enables MuJoCo physics (Lunar_Terrain_Raph_MuJoCo) for the command, e.g.
+# MUJOCO=1 docker/linux/mare.sh build, then MUJOCO=1 docker/linux/mare.sh editor.
+# It is off by default; enabling its plugins in the .uproject turns it on for good.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export MARE_SUITE="$(cd "$HERE/../../.." && pwd)"
@@ -42,6 +46,15 @@ URLAB_DEPS="git -C /work/MARE-Lunar-Simulator submodule update --init Plugins/Un
       || CMAKE_BUILD_PARALLEL_LEVEL=\$(nproc) \
          bash $URLAB/third_party/build_all.sh --engine \$UE_ROOT; }"
 URLAB_RUNTIME="bash $URLAB/Scripts/setup_runtime_linux.sh"
+# The .uproject disables URLab and the bridge, so without MuJoCo neither the
+# submodule nor its libraries are needed. MUJOCO=1, or both plugins enabled in the
+# .uproject, builds them and enables them in the editor.
+BUILD="$UE/Build/BatchFiles/Linux/Build.sh Linux Development -Project=$PROJECT -TargetType=Editor -Progress"
+MUJOCO_ON=""
+if [[ "${MUJOCO:-}" == 1 ]] || grep -A1 '"Name": "UnrealRoboticsLab"' "$HERE/../../Moon_Simulator.uproject" | grep -q '"Enabled": true'; then
+    MUJOCO_ON=1
+    BUILD="$URLAB_DEPS && $BUILD -EnablePlugin=UnrealRoboticsLab+MAREMuJoCoBridge && $URLAB_RUNTIME"
+fi
 SHADERS="-ini:Engine:[DevOptions.Shaders]:PercentageUnusedShaderCompilingThreads=${SHADER_RESERVE:-12}"
 # Vulkan bindless heap for typed-buffer views: Unreal's 65,536 default overflows
 # here (the levels' 2,000 wheel-track decals alone hold ~16,000, and re-creating
@@ -81,6 +94,7 @@ case "${QUALITY:-high}" in
     project) ;;
     *) echo "QUALITY must be high or project" >&2; exit 2 ;;
 esac
+[[ -n "$MUJOCO_ON" ]] && OPTS+=" -EnablePlugins=UnrealRoboticsLab,MAREMuJoCoBridge"
 compose=(docker compose -f "$HERE/compose.yaml")
 
 image() {
@@ -104,11 +118,11 @@ clear_stale_state() {
 
 case "${1:-editor}" in
     build)
-        # No target name: UnrealBuildTool picks the project's editor target, which
-        # URLab requires (it enables engine plugins that are off by default), and
-        # UnrealEditor without it. Naming UnrealEditor would build both and fail.
+        # No target name: UnrealBuildTool picks the project's own editor target when
+        # the project needs one (URLab enables engine plugins that are off by
+        # default), else UnrealEditor. Naming UnrealEditor could build both and fail.
         "${compose[@]}" build
-        run unreal bash -lc "$URLAB_DEPS && $UE/Build/BatchFiles/Linux/Build.sh Linux Development -Project=$PROJECT -TargetType=Editor -Progress && $URLAB_RUNTIME" ;;
+        run unreal bash -lc "$BUILD" ;;
     editor)
         image
         shift $(( $# > 0 ))   # "mare.sh" alone means editor
@@ -125,7 +139,7 @@ case "${1:-editor}" in
     smoke)
         image
         clear_stale_state
-        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $OPTS -RenderOffscreen -unattended -nosplash -nosound -stdout -FullStdOutLogOutput -ExecutePythonScript=$SCRIPTS/smoke.py" ;;
+        run -e MARE_MUJOCO=${MUJOCO_ON:-0} unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $OPTS -RenderOffscreen -unattended -nosplash -nosound -stdout -FullStdOutLogOutput -ExecutePythonScript=$SCRIPTS/smoke.py" ;;
     shell)
         image
         run unreal bash ;;

@@ -11,8 +11,9 @@ GNC stack as the Chaos rover; the Chaos levels are unchanged.
 
 ## Usage
 
-1. Start the GNC stack and select **Raph** in the dashboard's ROVER menu.
-2. Open `Lunar_Terrain_Raph_MuJoCo` and press Play.
+1. Enable MuJoCo (off by default; see Setup).
+2. Start the GNC stack and select **Raph** in the dashboard's ROVER menu.
+3. Open `Lunar_Terrain_Raph_MuJoCo` and press Play.
 
 ## Contents
 
@@ -50,7 +51,8 @@ Related project files:
 
 ## Setup
 
-URLab is a git submodule (`Plugins/UnrealRoboticsLab`); clone with `--recursive`, or run
+The project disables this plugin and URLab by default, so it opens without them. URLab is a git
+submodule (`Plugins/UnrealRoboticsLab`); clone with `--recursive`, or run
 `git submodule update --init Plugins/UnrealRoboticsLab`. Its native dependencies (MuJoCo, CoACD, libzmq)
 are built once per machine.
 
@@ -61,13 +63,15 @@ cd Plugins/UnrealRoboticsLab/third_party
 .\build_all.ps1            # requires CMake 3.24+ and Visual Studio 2022
 ```
 
-Then build the project (`Build.bat Moon_SimulatorEditor Win64 Development -Project=...`) or let the editor
-compile it. Requires the UnrealRoboticsLab and UnrealSimClock plugins.
+Then enable *Unreal Robotics Lab* and *MARE MuJoCo Rover Bridge* (*Edit → Plugins*, or `"Enabled": true`
+for both in `Moon_Simulator.uproject`) and restart; the editor compiles them. Requires the
+UnrealSimClock plugin.
 
-**Linux (Docker):** `docker/linux/mare.sh build` does it all: it fetches the submodule if needed, builds
-the dependencies the first time with the engine's own clang, compiles the project, and links the
-libraries next to the plugin. Then open the level with `docker/linux/mare.sh editor /Game/Lunar_Terrain_Raph_MuJoCo`
-(or `headless`, which also starts Play).
+**Linux (Docker):** `MUJOCO=1 docker/linux/mare.sh build` does it all: it fetches the submodule if
+needed, builds the dependencies the first time with the engine's own clang, compiles the project with
+both plugins, and links the libraries next to the plugin. Then open the level with
+`MUJOCO=1 docker/linux/mare.sh editor /Game/Lunar_Terrain_Raph_MuJoCo` (or `headless`, which also starts
+Play). With both plugins enabled in the `.uproject`, `MUJOCO=1` is not needed.
 
 ## Notes
 

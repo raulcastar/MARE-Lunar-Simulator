@@ -14,6 +14,14 @@
 		{
 			"Name": "JsonBlueprintUtilities",
 			"Enabled": true
+		},
+		{
+			"Name": "UnrealRoboticsLab",
+			"Enabled": false
+		},
+		{
+			"Name": "MAREMuJoCoBridge",
+			"Enabled": false
 		}
 	]
 }

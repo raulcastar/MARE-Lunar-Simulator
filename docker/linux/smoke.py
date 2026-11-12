@@ -1,14 +1,15 @@
 """
 Headless check of the project in the Linux editor (mare.sh smoke): the
-project's C++ plugins loaded, every level (Chaos and MuJoCo) open with its
-terrain and rover, then quit. Prints MARE_SMOKE OK or MARE_SMOKE FAIL lines
-to the log.
+project's C++ plugins loaded, every level open with its terrain and rover,
+then quit. The MuJoCo plugins and level are checked when mare.sh enables them
+(MARE_MUJOCO=1). Prints MARE_SMOKE OK or MARE_SMOKE FAIL lines to the log.
 """
 import os
 
 import unreal
 
 failures = []
+MUJOCO = os.environ.get("MARE_MUJOCO") == "1"
 
 
 def check(ok, what):
@@ -26,17 +27,18 @@ for path in ("/Script/UnrealDEMLandscape.DEMLandscapeLibrary",
              "/Script/UnrealEventCam.UnrealEventCam",
              "/Script/UnrealSPADCam.UnrealSPADCam",
              "/Script/UnrealSimClock.SimClockSubsystem",
-             "/Script/TCPWrapper.TCPClientComponent",
-             "/Script/URLab.AMjManager",
-             "/Script/URLab.MjArticulation",
-             "/Script/MAREMuJoCoBridge.MareMuJoCoRoverBridge",
-             "/Script/MAREMuJoCoBridge.MareRollingTerrain"):
+             "/Script/TCPWrapper.TCPClientComponent") + (
+             ("/Script/URLab.AMjManager",
+              "/Script/URLab.MjArticulation",
+              "/Script/MAREMuJoCoBridge.MareMuJoCoRoverBridge",
+              "/Script/MAREMuJoCoBridge.MareRollingTerrain") if MUJOCO else ()):
     check(unreal.load_class(None, path) is not None, f"plugin class {path}")
 
 levels = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-for level in ("/Game/Lunar_Terrain_Raph", "/Game/Lunar_Terrain_Yutu",
-              "/Game/Lunar_Terrain_Raph_MuJoCo"):
+unreal.log(f"MARE_SMOKE MuJoCo {'enabled' if MUJOCO else 'disabled: skipping its plugins and level'}")
+for level in ("/Game/Lunar_Terrain_Raph", "/Game/Lunar_Terrain_Yutu") + (
+              ("/Game/Lunar_Terrain_Raph_MuJoCo",) if MUJOCO else ()):
     check(levels.load_level(level), f"load {level}")
     all_actors = actors.get_all_level_actors()
     terrain = [a.get_actor_label() for a in all_actors if isinstance(a, unreal.LandscapeProxy)]
