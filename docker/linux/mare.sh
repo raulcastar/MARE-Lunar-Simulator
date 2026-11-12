@@ -3,7 +3,7 @@
 # but Docker; the plugins are built into Plugins/*/Binaries/Linux.
 #
 #   docker/linux/mare.sh build     build the image, then the project's plugins (with MuJoCo,
-#                                  the first time, also URLab's native libraries: see below)
+#                                  also URLab's native libraries the first time)
 #   docker/linux/mare.sh editor [ARGS]  open the editor on your X server (Wayland: XWayland);
 #                                  ARGS go to UnrealEditor, e.g. /Game/Lunar_Terrain_Yutu
 #   docker/linux/mare.sh headless [ARGS]  the editor without a window, starting Play by itself
@@ -26,32 +26,34 @@
 # SHADER_RESERVE is the percentage of logical cores left free while shaders
 # compile (default 12, so 14 of 16 threads compile; Unreal's own default is 50).
 #
-# MUJOCO=1 enables MuJoCo physics (Lunar_Terrain_Raph_MuJoCo) for the command, e.g.
-# MUJOCO=1 docker/linux/mare.sh build, then MUJOCO=1 docker/linux/mare.sh editor.
-# It is off by default; enabling its plugins in the .uproject turns it on for good.
+# MUJOCO=1 turns on MuJoCo physics (off by default) for one command, e.g.
+#   MUJOCO=1 docker/linux/mare.sh build
+#   MUJOCO=1 docker/linux/mare.sh editor /Game/Lunar_Terrain_Raph_MuJoCo
+# Enabling its two plugins in the .uproject turns it on for every command.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export MARE_SUITE="$(cd "$HERE/../../.." && pwd)"
 PROJECT=/work/MARE-Lunar-Simulator/Moon_Simulator.uproject
 SCRIPTS=/work/MARE-Lunar-Simulator/docker/linux
 UE='$UE_ROOT/Engine'
-# MuJoCo physics (Lunar_Terrain_Raph_MuJoCo) comes from the Unreal Robotics Lab
-# plugin, a git submodule. Its native libraries (MuJoCo, CoACD, libzmq) are built
-# once with the engine's clang and libc++, as the system gcc's would not link into
-# the plugin, on every core (URLab's scripts otherwise use one), then linked next
-# to the plugin's .so, where the editor loads them.
+# MuJoCo comes from the Unreal Robotics Lab plugin (URLab), a git submodule that the
+# .uproject disables, with the bridge, so that the project needs neither by default.
+# With MuJoCo on, URLab's native libraries (MuJoCo, CoACD, libzmq) are built once
+# with the engine's clang and libc++, as the system gcc's would not link into the
+# plugin, on every core (URLab's scripts otherwise use one), then linked next to
+# the plugin's .so, where the editor loads them.
 URLAB=/work/MARE-Lunar-Simulator/Plugins/UnrealRoboticsLab
 URLAB_DEPS="git -C /work/MARE-Lunar-Simulator submodule update --init Plugins/UnrealRoboticsLab \
  && { ls $URLAB/third_party/install/MuJoCo/lib/libmujoco.so* >/dev/null 2>&1 \
       || CMAKE_BUILD_PARALLEL_LEVEL=\$(nproc) \
          bash $URLAB/third_party/build_all.sh --engine \$UE_ROOT; }"
 URLAB_RUNTIME="bash $URLAB/Scripts/setup_runtime_linux.sh"
-# The .uproject disables URLab and the bridge, so without MuJoCo neither the
-# submodule nor its libraries are needed. MUJOCO=1, or both plugins enabled in the
-# .uproject, builds them and enables them in the editor.
 BUILD="$UE/Build/BatchFiles/Linux/Build.sh Linux Development -Project=$PROJECT -TargetType=Editor -Progress"
+uproject_enables_mujoco() {
+    grep -A1 '"Name": "UnrealRoboticsLab"' "$HERE/../../Moon_Simulator.uproject" | grep -q '"Enabled": true'
+}
 MUJOCO_ON=""
-if [[ "${MUJOCO:-}" == 1 ]] || grep -A1 '"Name": "UnrealRoboticsLab"' "$HERE/../../Moon_Simulator.uproject" | grep -q '"Enabled": true'; then
+if [[ "${MUJOCO:-}" == 1 ]] || uproject_enables_mujoco; then
     MUJOCO_ON=1
     BUILD="$URLAB_DEPS && $BUILD -EnablePlugin=UnrealRoboticsLab+MAREMuJoCoBridge && $URLAB_RUNTIME"
 fi

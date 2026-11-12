@@ -52,9 +52,9 @@ Related project files:
 ## Setup
 
 The project disables this plugin and URLab by default, so it opens without them. URLab is a git
-submodule (`Plugins/UnrealRoboticsLab`); clone with `--recursive`, or run
-`git submodule update --init Plugins/UnrealRoboticsLab`. Its native dependencies (MuJoCo, CoACD, libzmq)
-are built once per machine.
+submodule (`Plugins/UnrealRoboticsLab`): clone with `--recursive`, or run
+`git submodule update --init Plugins/UnrealRoboticsLab`. Its native libraries (MuJoCo, CoACD, libzmq) are
+built once per machine.
 
 **Windows:**
 
@@ -64,14 +64,17 @@ cd Plugins/UnrealRoboticsLab/third_party
 ```
 
 Then enable *Unreal Robotics Lab* and *MARE MuJoCo Rover Bridge* (*Edit → Plugins*, or `"Enabled": true`
-for both in `Moon_Simulator.uproject`) and restart; the editor compiles them. Requires the
-UnrealSimClock plugin.
+for both in `Moon_Simulator.uproject`) and restart; the editor compiles them.
 
-**Linux (Docker):** `MUJOCO=1 docker/linux/mare.sh build` does it all: it fetches the submodule if
-needed, builds the dependencies the first time with the engine's own clang, compiles the project with
-both plugins, and links the libraries next to the plugin. Then open the level with
-`MUJOCO=1 docker/linux/mare.sh editor /Game/Lunar_Terrain_Raph_MuJoCo` (or `headless`, which also starts
-Play). With both plugins enabled in the `.uproject`, `MUJOCO=1` is not needed.
+**Linux (Docker):** prefix `mare.sh` with `MUJOCO=1`. The build fetches the submodule if needed, builds
+the native libraries the first time with the engine's clang, and compiles the project with both plugins:
+
+```sh
+MUJOCO=1 docker/linux/mare.sh build
+MUJOCO=1 docker/linux/mare.sh editor /Game/Lunar_Terrain_Raph_MuJoCo   # or headless, which also starts Play
+```
+
+With both plugins enabled in the `.uproject`, `MUJOCO=1` is not needed.
 
 ## Notes
 
