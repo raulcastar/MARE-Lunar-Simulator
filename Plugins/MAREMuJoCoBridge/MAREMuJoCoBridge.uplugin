@@ -1,0 +1,25 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1",
+	"EngineVersion": "5.7.0",
+	"FriendlyName": "MARE MuJoCo Rover Bridge",
+	"Description": "Runs the MARE rovers on MuJoCo (Unreal Robotics Lab): GNC bridge with the Chaos rover Blueprint protocol (wheel inputs in, base_link telemetry out), sensor rig, game-time stepping, and a heightfield that follows the rover.",
+	"Category": "Simulation",
+	"CreatedBy": "Raul Castilla Arquillo",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"Installed": false,
+	"EnabledByDefault": true,
+	"Modules": [
+		{
+			"Name": "MAREMuJoCoBridge",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{ "Name": "UnrealRoboticsLab", "Enabled": true },
+		{ "Name": "UnrealSimClock", "Enabled": true }
+	]
+}

@@ -1,0 +1,3 @@
+[submodule "Plugins/UnrealRoboticsLab"]
+	path = Plugins/UnrealRoboticsLab
+	url = https://github.com/URLab-Sim/UnrealRoboticsLab.git

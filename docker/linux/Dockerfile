@@ -10,11 +10,13 @@ FROM ${UE_IMAGE}
 
 # Vulkan loader (the NVIDIA ICD comes from the container toolkit), vulkaninfo for
 # diagnosis, and xclip: Terrain Studio's rover-shadow helper pastes through the
-# clipboard.
+# clipboard. CMake 3.24+ builds URLab's native libraries; Ubuntu 22.04's is
+# older, so it comes from pip.
 USER root
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libvulkan1 vulkan-tools xclip \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && pip3 install --no-cache-dir cmake==3.31.6
 USER ue4
 ENV UE_ROOT=/home/ue4/UnrealEngine
 WORKDIR /work/MARE-Lunar-Simulator

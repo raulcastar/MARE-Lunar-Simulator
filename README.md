@@ -101,7 +101,7 @@ MARE runs on **Windows** and **Linux**.
 
 ```sh
 git lfs install                # once: the Unreal assets are in Git LFS
-git clone https://github.com/raulcastar/MARE-Lunar-Simulator.git
+git clone --recursive https://github.com/raulcastar/MARE-Lunar-Simulator.git   # with the URLab submodule
 git clone https://github.com/raulcastar/GNC-Moon-Simulator.git
 git clone https://github.com/raulcastar/Unreal-Moon-Terrain-Generation.git
 ```
@@ -145,6 +145,27 @@ the Unreal Engine EULA. To get access, once:
 Commands, troubleshooting and what differs from Windows:
 [docs/setup.md](docs/setup.md#linux-in-docker).
 
+## MuJoCo physics
+
+`Lunar_Terrain_Raph_MuJoCo` runs the Raph Rover on [MuJoCo](https://github.com/google-deepmind/mujoco)
+through the [Unreal Robotics Lab](https://github.com/URLab-Sim/UnrealRoboticsLab) plugin (URLab),
+driven by the same GNC stack. The other levels keep Unreal's Chaos physics.
+
+URLab is a git submodule in `Plugins/UnrealRoboticsLab`, pinned to a tested
+commit. Clone with `--recursive`, or fetch it in an existing clone:
+
+```sh
+git submodule update --init
+```
+
+The project needs URLab built to open, whichever level you use. Its native
+libraries (MuJoCo, CoACD, libzmq) are built once per machine:
+
+- **Linux:** `docker/linux/mare.sh build` fetches the submodule and builds everything.
+- **Windows:** run `Plugins/UnrealRoboticsLab/third_party/build_all.ps1` (CMake 3.24+ and Visual Studio 2022), then open the project.
+
+Usage and the rover model: [Plugins/MAREMuJoCoBridge](Plugins/MAREMuJoCoBridge/README.md).
+
 ## AI agents
 
 Two MCP servers let an AI agent (Claude Code, Claude Desktop or any MCP client)
@@ -164,7 +185,7 @@ cameras and records bags. See each repository's README.
 ## Roadmap
 
 - [x] Linux support (Ubuntu, Arch), alongside Windows: the whole suite in Docker ([Linux](#linux))
-- [ ] MuJoCo physics for the rovers, through the [Unreal Robotics Lab](https://github.com/URLab-Sim/UnrealRoboticsLab) plugin
+- [x] MuJoCo physics for the Raph Rover, through the [Unreal Robotics Lab](https://github.com/URLab-Sim/UnrealRoboticsLab) plugin ([MuJoCo physics](#mujoco-physics))
 - [ ] More rover models
 - [ ] Lunar lava tubes
 - [ ] Wheel steering, including Ackermann steering

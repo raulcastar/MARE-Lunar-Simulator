@@ -1,7 +1,8 @@
 """
 Headless check of the project in the Linux editor (mare.sh smoke): the
-project's C++ plugins loaded, both levels open with their terrain and rover,
-then quit. Prints MARE_SMOKE OK or MARE_SMOKE FAIL lines to the log.
+project's C++ plugins loaded, every level (Chaos and MuJoCo) open with its
+terrain and rover, then quit. Prints MARE_SMOKE OK or MARE_SMOKE FAIL lines
+to the log.
 """
 import os
 
@@ -25,12 +26,17 @@ for path in ("/Script/UnrealDEMLandscape.DEMLandscapeLibrary",
              "/Script/UnrealEventCam.UnrealEventCam",
              "/Script/UnrealSPADCam.UnrealSPADCam",
              "/Script/UnrealSimClock.SimClockSubsystem",
-             "/Script/TCPWrapper.TCPClientComponent"):
+             "/Script/TCPWrapper.TCPClientComponent",
+             "/Script/URLab.AMjManager",
+             "/Script/URLab.MjArticulation",
+             "/Script/MAREMuJoCoBridge.MareMuJoCoRoverBridge",
+             "/Script/MAREMuJoCoBridge.MareRollingTerrain"):
     check(unreal.load_class(None, path) is not None, f"plugin class {path}")
 
 levels = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-for level in ("/Game/Lunar_Terrain_Raph", "/Game/Lunar_Terrain_Yutu"):
+for level in ("/Game/Lunar_Terrain_Raph", "/Game/Lunar_Terrain_Yutu",
+              "/Game/Lunar_Terrain_Raph_MuJoCo"):
     check(levels.load_level(level), f"load {level}")
     all_actors = actors.get_all_level_actors()
     terrain = [a.get_actor_label() for a in all_actors if isinstance(a, unreal.LandscapeProxy)]
