@@ -2,14 +2,15 @@
 # MARE's Unreal Editor in Docker (Linux, NVIDIA GPU). Nothing runs on the host
 # but Docker; the plugins are built into Plugins/*/Binaries/Linux.
 #
-#   docker/linux/mare.sh build     build the image, then the project's plugins
+#   docker/linux/mare.sh build     build the image, then the project's plugins (with MuJoCo,
+#                                  also URLab's native libraries the first time)
 #   docker/linux/mare.sh editor [ARGS]  open the editor on your X server (Wayland: XWayland);
 #                                  ARGS go to UnrealEditor, e.g. /Game/Lunar_Terrain_Yutu
 #   docker/linux/mare.sh headless [ARGS]  the editor without a window, starting Play by itself
 #                                  (it renders as usual: every sensor works); Ctrl-C stops it
 #   docker/linux/mare.sh play|stop|status  start or stop Play, or show the level and whether
 #                                  Play runs, in a running editor (windowed or headless)
-#   docker/linux/mare.sh smoke     headless check: load both levels, check the plugins, quit
+#   docker/linux/mare.sh smoke     headless check: load every level, check the plugins, quit
 #   docker/linux/mare.sh shell     a shell in the container
 #
 # docker/linux/progress.sh watches a running editor (shaders, GPU, log, smoke results).
@@ -24,12 +25,38 @@
 #
 # SHADER_RESERVE is the percentage of logical cores left free while shaders
 # compile (default 12, so 14 of 16 threads compile; Unreal's own default is 50).
+#
+# MUJOCO=1 turns on MuJoCo physics (off by default) for one command, e.g.
+#   MUJOCO=1 docker/linux/mare.sh build
+#   MUJOCO=1 docker/linux/mare.sh editor /Game/Lunar_Terrain_Raph_MuJoCo
+# Enabling its two plugins in the .uproject turns it on for every command.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export MARE_SUITE="$(cd "$HERE/../../.." && pwd)"
 PROJECT=/work/MARE-Lunar-Simulator/Moon_Simulator.uproject
 SCRIPTS=/work/MARE-Lunar-Simulator/docker/linux
 UE='$UE_ROOT/Engine'
+# MuJoCo comes from the Unreal Robotics Lab plugin (URLab), a git submodule that the
+# .uproject disables, with the bridge, so that the project needs neither by default.
+# With MuJoCo on, URLab's native libraries (MuJoCo, CoACD, libzmq) are built once
+# with the engine's clang and libc++, as the system gcc's would not link into the
+# plugin, on every core (URLab's scripts otherwise use one), then linked next to
+# the plugin's .so, where the editor loads them.
+URLAB=/work/MARE-Lunar-Simulator/Plugins/UnrealRoboticsLab
+URLAB_DEPS="git -C /work/MARE-Lunar-Simulator submodule update --init Plugins/UnrealRoboticsLab \
+ && { ls $URLAB/third_party/install/MuJoCo/lib/libmujoco.so* >/dev/null 2>&1 \
+      || CMAKE_BUILD_PARALLEL_LEVEL=\$(nproc) \
+         bash $URLAB/third_party/build_all.sh --engine \$UE_ROOT; }"
+URLAB_RUNTIME="bash $URLAB/Scripts/setup_runtime_linux.sh"
+BUILD="$UE/Build/BatchFiles/Linux/Build.sh Linux Development -Project=$PROJECT -TargetType=Editor -Progress"
+uproject_enables_mujoco() {
+    grep -A1 '"Name": "UnrealRoboticsLab"' "$HERE/../../Moon_Simulator.uproject" | grep -q '"Enabled": true'
+}
+MUJOCO_ON=""
+if [[ "${MUJOCO:-}" == 1 ]] || uproject_enables_mujoco; then
+    MUJOCO_ON=1
+    BUILD="$URLAB_DEPS && $BUILD -EnablePlugin=UnrealRoboticsLab+MAREMuJoCoBridge && $URLAB_RUNTIME"
+fi
 SHADERS="-ini:Engine:[DevOptions.Shaders]:PercentageUnusedShaderCompilingThreads=${SHADER_RESERVE:-12}"
 # Vulkan bindless heap for typed-buffer views: Unreal's 65,536 default overflows
 # here (the levels' 2,000 wheel-track decals alone hold ~16,000, and re-creating
@@ -69,6 +96,7 @@ case "${QUALITY:-high}" in
     project) ;;
     *) echo "QUALITY must be high or project" >&2; exit 2 ;;
 esac
+[[ -n "$MUJOCO_ON" ]] && OPTS+=" -EnablePlugins=UnrealRoboticsLab,MAREMuJoCoBridge"
 compose=(docker compose -f "$HERE/compose.yaml")
 
 image() {
@@ -92,8 +120,11 @@ clear_stale_state() {
 
 case "${1:-editor}" in
     build)
+        # No target name: UnrealBuildTool picks the project's own editor target when
+        # the project needs one (URLab enables engine plugins that are off by
+        # default), else UnrealEditor. Naming UnrealEditor could build both and fail.
         "${compose[@]}" build
-        run unreal bash -lc "$UE/Build/BatchFiles/Linux/Build.sh UnrealEditor Linux Development -Project=$PROJECT -TargetType=Editor -Progress" ;;
+        run unreal bash -lc "$BUILD" ;;
     editor)
         image
         shift $(( $# > 0 ))   # "mare.sh" alone means editor
@@ -110,7 +141,7 @@ case "${1:-editor}" in
     smoke)
         image
         clear_stale_state
-        run unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $OPTS -RenderOffscreen -unattended -nosplash -nosound -stdout -FullStdOutLogOutput -ExecutePythonScript=$SCRIPTS/smoke.py" ;;
+        run -e MARE_MUJOCO=${MUJOCO_ON:-0} unreal bash -lc "$UE/Binaries/Linux/UnrealEditor $PROJECT $OPTS -RenderOffscreen -unattended -nosplash -nosound -stdout -FullStdOutLogOutput -ExecutePythonScript=$SCRIPTS/smoke.py" ;;
     shell)
         image
         run unreal bash ;;

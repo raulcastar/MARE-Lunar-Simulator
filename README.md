@@ -101,7 +101,7 @@ MARE runs on **Windows** and **Linux**.
 
 ```sh
 git lfs install                # once: the Unreal assets are in Git LFS
-git clone https://github.com/raulcastar/MARE-Lunar-Simulator.git
+git clone https://github.com/raulcastar/MARE-Lunar-Simulator.git   # --recursive for MuJoCo (optional)
 git clone https://github.com/raulcastar/GNC-Moon-Simulator.git
 git clone https://github.com/raulcastar/Unreal-Moon-Terrain-Generation.git
 ```
@@ -145,6 +145,32 @@ the Unreal Engine EULA. To get access, once:
 Commands, troubleshooting and what differs from Windows:
 [docs/setup.md](docs/setup.md#linux-in-docker).
 
+## MuJoCo physics
+
+`Lunar_Terrain_Raph_MuJoCo` runs the Raph Rover on [MuJoCo](https://github.com/google-deepmind/mujoco)
+through the [Unreal Robotics Lab](https://github.com/URLab-Sim/UnrealRoboticsLab) plugin (URLab),
+driven by the same GNC stack. The other levels keep Unreal's Chaos physics.
+
+MuJoCo is optional and off by default; the project opens and runs without it.
+It needs URLab, a git submodule in `Plugins/UnrealRoboticsLab` pinned to a tested
+commit: clone with `--recursive`, or run `git submodule update --init` in an
+existing clone. To turn it on:
+
+- **Linux:** prefix `mare.sh` commands with `MUJOCO=1`. The first build also fetches
+  the submodule and builds URLab's native libraries (MuJoCo, CoACD, libzmq).
+  ```sh
+  MUJOCO=1 docker/linux/mare.sh build
+  MUJOCO=1 docker/linux/mare.sh editor /Game/Lunar_Terrain_Raph_MuJoCo
+  ```
+- **Windows:** build URLab's native libraries once with
+  `Plugins/UnrealRoboticsLab/third_party/build_all.ps1` (CMake 3.24+, Visual Studio
+  2022), then enable *Unreal Robotics Lab* and *MARE MuJoCo Rover Bridge* in
+  *Edit → Plugins* and restart the editor.
+
+Enabling the two plugins in the project keeps MuJoCo on for good, on Linux as well.
+
+Usage and the rover model: [Plugins/MAREMuJoCoBridge](Plugins/MAREMuJoCoBridge/README.md).
+
 ## AI agents
 
 Two MCP servers let an AI agent (Claude Code, Claude Desktop or any MCP client)
@@ -164,7 +190,7 @@ cameras and records bags. See each repository's README.
 ## Roadmap
 
 - [x] Linux support (Ubuntu, Arch), alongside Windows: the whole suite in Docker ([Linux](#linux))
-- [ ] MuJoCo physics for the rovers, through the [Unreal Robotics Lab](https://github.com/URLab-Sim/UnrealRoboticsLab) plugin
+- [x] MuJoCo physics for the Raph Rover, through the [Unreal Robotics Lab](https://github.com/URLab-Sim/UnrealRoboticsLab) plugin ([MuJoCo physics](#mujoco-physics))
 - [ ] More rover models
 - [ ] Lunar lava tubes
 - [ ] Wheel steering, including Ackermann steering

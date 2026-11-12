@@ -1,0 +1,83 @@
+<mujoco model="raph_rover">
+  <!-- Raph Rover (MARE) for MuJoCo / Unreal Robotics Lab. Collision geometry only; the visual meshes are Unreal assets. -->
+  <compiler angle="radian" autolimits="true"/>
+  <option timestep="0.002" integrator="implicitfast" cone="elliptic" impratio="10"/>
+  <default>
+    <default class="collision"><geom rgba="0.55 0.55 0.58 1" friction="1.0 0.02 0.002" solref="0.01 1" solimp="0.95 0.99 0.001"/></default>
+    <default class="wheel"><joint type="hinge" axis="0 1 0" damping="0.02" armature="0.2" frictionloss="1.0"/></default>
+    <default class="drive"><velocity kv="20" forcerange="-8 8" ctrlrange="-40 40"/></default>
+    <default class="steer"><joint type="hinge" axis="0 0 1" range="-1.5708 1.5708" damping="17" armature="0.05"/></default>
+    <default class="steering"><position kp="3000" forcerange="-60 60" ctrlrange="-1.5708 1.5708"/></default>
+  </default>
+  <worldbody>
+    <body name="base_link" pos="0 0 0.1085">
+      <freejoint name="root"/>
+      <inertial pos="0 0 0.08" mass="9.96" diaginertia="0.0777 0.1177 0.1527"/>
+      <geom name="chassis" class="collision" type="box" size="0.17 0.13 0.08" pos="0 0 0.11"/>
+      <site name="imu" pos="0 0 0.05"/>
+      <body name="steer_fl_link" pos="0.195 0.1874 0">
+        <inertial pos="0 0 0" mass="0.01" diaginertia="1e-6 1e-6 1e-6"/>
+        <joint name="steer_fl_joint" class="steer"/>
+        <body name="wheel_fl_link">
+          <inertial pos="0 0 0" mass="0.4" diaginertia="0.001016 0.001566 0.001016"/>
+          <joint name="wheel_fl_joint" class="wheel"/>
+          <geom name="wheel_fl_collision" class="collision" type="cylinder" size="0.0885 0.0418" euler="1.5708 0 0"/>
+        </body>
+      </body>
+      <body name="steer_fr_link" pos="0.195 -0.1922 0">
+        <inertial pos="0 0 0" mass="0.01" diaginertia="1e-6 1e-6 1e-6"/>
+        <joint name="steer_fr_joint" class="steer"/>
+        <body name="wheel_fr_link">
+          <inertial pos="0 0 0" mass="0.4" diaginertia="0.001016 0.001566 0.001016"/>
+          <joint name="wheel_fr_joint" class="wheel"/>
+          <geom name="wheel_fr_collision" class="collision" type="cylinder" size="0.0885 0.0418" euler="1.5708 0 0"/>
+        </body>
+      </body>
+      <body name="steer_rl_link" pos="-0.195 0.1874 0">
+        <inertial pos="0 0 0" mass="0.01" diaginertia="1e-6 1e-6 1e-6"/>
+        <joint name="steer_rl_joint" class="steer"/>
+        <body name="wheel_rl_link">
+          <inertial pos="0 0 0" mass="0.4" diaginertia="0.001016 0.001566 0.001016"/>
+          <joint name="wheel_rl_joint" class="wheel"/>
+          <geom name="wheel_rl_collision" class="collision" type="cylinder" size="0.0885 0.0418" euler="1.5708 0 0"/>
+        </body>
+      </body>
+      <body name="steer_rr_link" pos="-0.195 -0.1922 0">
+        <inertial pos="0 0 0" mass="0.01" diaginertia="1e-6 1e-6 1e-6"/>
+        <joint name="steer_rr_joint" class="steer"/>
+        <body name="wheel_rr_link">
+          <inertial pos="0 0 0" mass="0.4" diaginertia="0.001016 0.001566 0.001016"/>
+          <joint name="wheel_rr_joint" class="wheel"/>
+          <geom name="wheel_rr_collision" class="collision" type="cylinder" size="0.0885 0.0418" euler="1.5708 0 0"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <contact>
+    <!-- A steered wheel swings into the chassis box, a simplification of the real body. -->
+    <exclude body1="base_link" body2="wheel_fl_link"/>
+    <exclude body1="base_link" body2="wheel_fr_link"/>
+    <exclude body1="base_link" body2="wheel_rl_link"/>
+    <exclude body1="base_link" body2="wheel_rr_link"/>
+  </contact>
+  <actuator>
+    <velocity name="wheel_fl" class="drive" joint="wheel_fl_joint"/>
+    <velocity name="wheel_fr" class="drive" joint="wheel_fr_joint"/>
+    <velocity name="wheel_rl" class="drive" joint="wheel_rl_joint"/>
+    <velocity name="wheel_rr" class="drive" joint="wheel_rr_joint"/>
+    <position name="steer_fl" class="steering" joint="steer_fl_joint"/>
+    <position name="steer_fr" class="steering" joint="steer_fr_joint"/>
+    <position name="steer_rl" class="steering" joint="steer_rl_joint"/>
+    <position name="steer_rr" class="steering" joint="steer_rr_joint"/>
+  </actuator>
+  <sensor>
+    <framepos name="base_pos" objtype="body" objname="base_link"/>
+    <framequat name="base_quat" objtype="body" objname="base_link"/>
+    <gyro name="imu_gyro" site="imu"/>
+    <accelerometer name="imu_accel" site="imu"/>
+    <jointvel name="wheel_fl_vel" joint="wheel_fl_joint"/>
+    <jointvel name="wheel_fr_vel" joint="wheel_fr_joint"/>
+    <jointvel name="wheel_rl_vel" joint="wheel_rl_joint"/>
+    <jointvel name="wheel_rr_vel" joint="wheel_rr_joint"/>
+  </sensor>
+</mujoco>
