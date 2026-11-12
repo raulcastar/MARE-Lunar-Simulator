@@ -17,7 +17,9 @@ class FSocket;
  *
  * - Transport: TCP client to the rover node (default 127.0.0.1:3003).
  * - Input: JSON objects with wheel inputs FL, BL, FR, BR (m/s x wheel_speed_scale, negative = forward)
- *   and the headlight state; each wheel input sets a MuJoCo velocity actuator (rad/s).
+ *   and the headlight state; each wheel input sets a MuJoCo velocity actuator (rad/s). Optional steering
+ *   angles SFL, SBL, SFR, SBR (rad, positive = left) set the steering actuators; a missing angle holds
+ *   that wheel straight, so a skid-steer command keeps all four straight.
  * - Output: base-body telemetry in Unreal world units: x, y, z (cm), roll, pitch, yaw (deg),
  *   vx, vy, vz (cm/s), wx, wy, wz (rad/s) and t_ns (UnrealSimClock).
  *
@@ -57,6 +59,10 @@ public:
 	/** Wire key (FL, BL, FR, BR) to MuJoCo actuator name. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rover")
 	TMap<FString, FString> WheelActuators;
+
+	/** Wire key (SFL, SBL, SFR, SBR) to MuJoCo steering actuator name; a model without them has fixed wheels. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rover")
+	TMap<FString, FString> SteerActuators;
 
 	/** Wheel input units per m/s; must match the rover node's wheel_speed_scale. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rover")
@@ -106,6 +112,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Rover")
 	void SetWheelSpeeds(float FL, float BL, float FR, float BR);
 
+	/** Sets the steering angles (rad, positive = left); ignored by a model without steering. */
+	UFUNCTION(BlueprintCallable, Category = "Rover")
+	void SetSteeringAngles(float FL, float BL, float FR, float BR);
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
@@ -116,8 +126,10 @@ private:
 	{
 		TWeakObjectPtr<UStaticMeshComponent> Mesh;
 		FString Joint;            // MuJoCo hinge driving the mesh
+		FString SteerJoint;       // MuJoCo steering hinge, or empty for a fixed wheel
 		FQuat Rest;               // relative rotation at rest
 		FVector AxleInParent;     // wheel axle in the mesh's parent frame
+		FVector SteerAxisInParent; // base up axis in the mesh's parent frame
 	};
 
 	bool Bind();
@@ -139,6 +151,9 @@ private:
 
 	UPROPERTY(Transient)
 	TMap<FString, TObjectPtr<UMjActuator>> Actuators;
+
+	UPROPERTY(Transient)
+	TMap<FString, TObjectPtr<UMjActuator>> SteerActs;
 
 	TWeakObjectPtr<AAMjManager> Manager;
 	bool bSimulationStarted = false;

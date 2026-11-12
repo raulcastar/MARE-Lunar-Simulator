@@ -44,6 +44,10 @@ AMareMuJoCoRoverBridge::AMareMuJoCoRoverBridge()
 	WheelActuators.Add(TEXT("BL"), TEXT("wheel_rl"));
 	WheelActuators.Add(TEXT("FR"), TEXT("wheel_fr"));
 	WheelActuators.Add(TEXT("BR"), TEXT("wheel_rr"));
+	SteerActuators.Add(TEXT("SFL"), TEXT("steer_fl"));
+	SteerActuators.Add(TEXT("SBL"), TEXT("steer_rl"));
+	SteerActuators.Add(TEXT("SFR"), TEXT("steer_fr"));
+	SteerActuators.Add(TEXT("SBR"), TEXT("steer_rr"));
 }
 
 void AMareMuJoCoRoverBridge::BeginPlay()
@@ -134,14 +138,18 @@ void AMareMuJoCoRoverBridge::BindRigWheels()
 	if (bRigWheelsBound || !bUseRigVisuals || !SensorRig || !Rover || !BaseBody || !bRigAttached)
 		return;
 	bRigWheelsBound = true;
-	// MuJoCo wheel bodies (wheel_*_link) and their positions in the base frame.
+	// MuJoCo wheel bodies (wheel_*_link) and their positions in the base frame; a steering body
+	// steer_*_link of the same wheel adds its joint.
 	TArray<TPair<FString, FVector>> MjWheels;
+	TSet<FString> SteerBodies;
 	const FTransform Base = BaseBody->GetComponentTransform();
 	for (UMjBody* Body : Rover->GetBodies())
 	{
 		const FString Name = Body ? Body->GetName() : FString();
 		if (Name.StartsWith(TEXT("wheel_")) && Name.EndsWith(TEXT("_link")))
 			MjWheels.Add({Name.LeftChop(5) + TEXT("_joint"), Base.InverseTransformPosition(Body->GetComponentLocation())});
+		else if (Name.StartsWith(TEXT("steer_")) && Name.EndsWith(TEXT("_link")))
+			SteerBodies.Add(Name);
 	}
 	// Pair each rig wheel mesh with the nearest MuJoCo wheel (Blueprint component names are not reliable).
 	TArray<UStaticMeshComponent*> Meshes;
@@ -162,17 +170,30 @@ void AMareMuJoCoRoverBridge::BindRigWheels()
 		R.Joint = Best->Key;
 		R.Rest = M->GetRelativeRotation().Quaternion();
 		// A MuJoCo rotation about +y is an Unreal rotation about +Y by the same angle (see URLabAxisConv).
-		R.AxleInParent = M->GetAttachParent()->GetComponentTransform().InverseTransformVectorNoScale(Base.GetUnitAxis(EAxis::Y));
+		const FTransform Parent = M->GetAttachParent()->GetComponentTransform();
+		R.AxleInParent = Parent.InverseTransformVectorNoScale(Base.GetUnitAxis(EAxis::Y));
+		R.SteerAxisInParent = Parent.InverseTransformVectorNoScale(Base.GetUnitAxis(EAxis::Z));
+		const FString Wheel = Best->Key.Mid(6).LeftChop(6);   // wheel_fl_joint -> fl
+		if (SteerBodies.Contains(TEXT("steer_") + Wheel + TEXT("_link")))
+			R.SteerJoint = TEXT("steer_") + Wheel + TEXT("_joint");
 		RigWheels.Add(R);
 	}
-	UE_LOG(LogMareBridge, Log, TEXT("Rig visuals: %d wheels follow the MuJoCo wheel joints"), RigWheels.Num());
+	UE_LOG(LogMareBridge, Log, TEXT("Rig visuals: %d wheels follow the MuJoCo wheel joints (%d steered)"),
+		RigWheels.Num(), SteerBodies.Num());
 }
 
 void AMareMuJoCoRoverBridge::SpinRigWheels()
 {
+	// Spin about the axle, then steer about the base's up axis. A MuJoCo rotation about +z is an
+	// Unreal rotation about +Z by the opposite angle (the handedness flip, see URLabAxisConv).
 	for (const FRigWheel& W : RigWheels)
 		if (UStaticMeshComponent* M = W.Mesh.Get())
-			M->SetRelativeRotation(FQuat(W.AxleInParent, Rover->GetJointAngle(W.Joint)) * W.Rest);
+		{
+			const FQuat Spin(W.AxleInParent, Rover->GetJointAngle(W.Joint));
+			const FQuat Steer = W.SteerJoint.IsEmpty() ? FQuat::Identity
+				: FQuat(W.SteerAxisInParent, -Rover->GetJointAngle(W.SteerJoint));
+			M->SetRelativeRotation(Steer * Spin * W.Rest);
+		}
 }
 
 void AMareMuJoCoRoverBridge::AttachSensorRig()
@@ -299,7 +320,18 @@ bool AMareMuJoCoRoverBridge::Bind()
 			}
 		}
 	}
+	// Steering is optional: missing actuators leave those wheels fixed.
+	SteerActs.Reset();
+	for (const TPair<FString, FString>& Steer : SteerActuators)
+		for (UMjActuator* Act : All)
+			if (Act && ComponentMatches(Act, Steer.Value))
+			{
+				SteerActs.Add(Steer.Key, Act);
+				break;
+			}
 	const bool bOk = BaseBody && Actuators.Num() == WheelActuators.Num();
+	if (bOk)
+		UE_LOG(LogMareBridge, Log, TEXT("Bound %d wheel and %d steering actuators"), Actuators.Num(), SteerActs.Num());
 	if (!bOk && !bWarnedBind && GetWorld()->GetTimeSeconds() > 3.0)
 	{
 		bWarnedBind = true;
@@ -321,6 +353,16 @@ void AMareMuJoCoRoverBridge::SetWheelSpeeds(float FL, float BL, float FR, float 
 	for (const auto& S : Speeds)
 		if (TObjectPtr<UMjActuator>* Act = Actuators.Find(S.Key))
 			(*Act)->SetControl(S.Value);
+}
+
+void AMareMuJoCoRoverBridge::SetSteeringAngles(float FL, float BL, float FR, float BR)
+{
+	if (!Bind())
+		return;
+	const TPair<const TCHAR*, float> Angles[] = {{TEXT("SFL"), FL}, {TEXT("SBL"), BL}, {TEXT("SFR"), FR}, {TEXT("SBR"), BR}};
+	for (const auto& A : Angles)
+		if (TObjectPtr<UMjActuator>* Act = SteerActs.Find(A.Key))
+			(*Act)->SetControl(A.Value);
 }
 
 void AMareMuJoCoRoverBridge::Connect()
@@ -458,6 +500,13 @@ void AMareMuJoCoRoverBridge::HandleMessage(const FString& Json)
 	const double Scale = (bNegativeIsForward ? -1.0 : 1.0) / FMath::Max(1e-6, double(WheelInputPerMps) * WheelRadius);
 	SetWheelSpeeds(In[0] * Scale, In[1] * Scale, In[2] * Scale, In[3] * Scale);
 	LastCommandTime = FPlatformTime::Seconds();
+
+	// Steering angles (rad, positive = left); a missing one holds the wheel straight.
+	double Steer[4] = {0.0, 0.0, 0.0, 0.0};
+	const TCHAR* SteerKeys[4] = {TEXT("SFL"), TEXT("SBL"), TEXT("SFR"), TEXT("SBR")};
+	for (int32 k = 0; k < 4; ++k)
+		Obj->TryGetNumberField(SteerKeys[k], Steer[k]);
+	SetSteeringAngles(Steer[0], Steer[1], Steer[2], Steer[3]);
 
 	// Headlight state: headlights_on, headlights_intensity (0..1).
 	bool bOn = false;
