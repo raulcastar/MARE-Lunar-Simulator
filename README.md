@@ -27,7 +27,8 @@ with the whole suite in Docker, on Linux.
 *Both rovers driving themselves to a goal past rocks with the same GNC stack,
 seen from Unreal's orbit camera (6x speed). Videos at 2x:
 [Leo_Raph](docs/videos/raph_drive.mp4), [Yutu](docs/videos/yutu_drive.mp4).
-Leo_Raph is a model of Fictionlab's [Raph Rover](https://fictionlab.pl/raph-rover/); Yutu is adapted from a
+Leo_Raph is a model of Fictionlab's [Raph Rover](https://fictionlab.pl/raph-rover/) and the digital twin of
+SpaceR's real rover ([SpaceR-Raph-Rover-ROS2](https://github.com/snt-spacer/SpaceR-Raph-Rover-ROS2)); Yutu is adapted from a
 public model of the Chang'e 3 rover.*
 
 This repository is the Unreal project. It holds the levels, the rovers and the
@@ -40,6 +41,7 @@ sensor plugins, and it is the centre of the suite:
 | [GNC-Moon-Simulator](https://github.com/raulcastar/GNC-Moon-Simulator) | ROS 2 GNC stack in Docker: perception, path planning, rover control, mission control |
 | [UnrealStereoCam](https://github.com/raulcastar/UnrealStereoCam), [UnrealLidarCam](https://github.com/raulcastar/UnrealLidarCam), [UnrealEventCam](https://github.com/raulcastar/UnrealEventCam), [UnrealSPADCam](https://github.com/raulcastar/UnrealSPADCam), [UnrealSimClock](https://github.com/raulcastar/UnrealSimClock) | The sensor plugins, each usable in any Unreal project (copies in `Plugins/`) |
 | [UnrealDEMLandscape](https://github.com/raulcastar/UnrealDEMLandscape) | Editor plugin that creates the Landscape from Terrain Studio's heightmap, usable in any Unreal project (copy in `Plugins/`) |
+| [SpaceR-Raph-Rover-ROS2](https://github.com/snt-spacer/SpaceR-Raph-Rover-ROS2) | ROS 2 stack of the real Raph Rover at SpaceR, the robot Leo_Raph is the digital twin of |
 | [MARE-Dataset-Baselines](https://github.com/raulcastar/MARE-Dataset-Baselines) | Segmentation and depth baselines trained on the [dataset](https://huggingface.co/datasets/raulcastar/mare-lunar-rover-dataset) recorded with MARE; the generator that recorded it is in [`dataset/`](dataset) (optional) |
 
 ## The pipeline
