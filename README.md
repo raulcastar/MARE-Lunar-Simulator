@@ -184,6 +184,7 @@ cameras and records bags. See each repository's README.
 
 | | |
 |---|---|
+| [User dossier (PDF)](docs/MARE_Simulator_Dossier.pdf) | The whole simulator in 14 illustrated pages: setup, quick start, rovers, sensors, GNC stack, mission control |
 | [Pipeline](docs/pipeline.md) | The full workflow, from a terrain to an autonomous drive, and every link between the parts |
 | [Setup](docs/setup.md) | Cloning with LFS, building the plugins, connecting the other repositories, [Linux in Docker](docs/setup.md#linux-in-docker) |
 | [The Unreal project](docs/project.md) | Levels, rovers, plugins, content layout, project settings, editor Python |
