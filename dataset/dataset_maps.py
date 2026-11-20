@@ -68,7 +68,7 @@ def build_map(studio, maps_dir, name, size_m, terrain_preset, overrides, terrain
     k = cm.supersample_for(dem.shape)
     labels = cm.render_labels(dem.shape, craters, cm.CRATER_ID, cm.RIM_ID, cm.RIM_FRACTION, k)
     mask = cm.export_crater_mask(labels, maps_dir, name, 1.0, 0.0, cm.CRATER_ID, cm.RIM_ID,
-                                 cm.RIM_FRACTION, supersample=k, source="generator")
+                                 cm.RIM_FRACTION, supersample=k, source="generator", craters=craters)
 
     # 16-bit Landscape heightmap
     stem = f"{name}_elevationMap"
